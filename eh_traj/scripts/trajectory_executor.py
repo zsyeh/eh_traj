@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-MAVROS Trajectory Executor Node v2.0 (No Custom Messages)
+MAVROS Trajectory Executor Node v2.1 (Waypoint Reached Topic Added)
 
 - 一个简化的、可复用的单机控制器。
 - 控制接口:
@@ -22,7 +22,7 @@ from geometry_msgs.msg import PoseStamped, Point
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
 from std_srvs.srv import Trigger, TriggerResponse
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool # --- 新增代码 ---
 
 class FlightState(Enum):
     IDLE = 0          # 地面，未解锁
@@ -57,17 +57,20 @@ class TrajectoryExecutorNode:
         self.trajectory_duration = 0.0
 
         # --- ROS 接口 ---
+        ns_prefix = ''
+        log_prefix = "[SingleUAV]"
         if self.namespace:
-            self.namespace = '/' + self.namespace.strip('/')
+            ns_prefix = '/' + self.namespace.strip('/')
+            log_prefix = f"[{self.namespace}]"
         
-        rospy.loginfo(f"[{self.namespace}] 初始化轨迹执行器...")
+        rospy.loginfo(f"{log_prefix} 初始化轨迹执行器...")
 
         # MAVROS 接口
-        state_topic = f"{self.namespace}/mavros/state"
-        pose_topic = f"{self.namespace}/mavros/local_position/pose"
-        setpoint_topic = f"{self.namespace}/mavros/setpoint_position/local"
-        arming_srv = f"{self.namespace}/mavros/cmd/arming"
-        set_mode_srv = f"{self.namespace}/mavros/set_mode"
+        state_topic = f"{ns_prefix}/mavros/state"
+        pose_topic = f"{ns_prefix}/mavros/local_position/pose"
+        setpoint_topic = f"{ns_prefix}/mavros/setpoint_position/local"
+        arming_srv = f"{ns_prefix}/mavros/cmd/arming"
+        set_mode_srv = f"{ns_prefix}/mavros/set_mode"
 
         rospy.wait_for_service(arming_srv)
         rospy.wait_for_service(set_mode_srv)
@@ -87,10 +90,14 @@ class TrajectoryExecutorNode:
         self.hover_service = rospy.Service('~hover', Trigger, self._handle_hover)
         # 发布当前状态，便于上层节点监控
         self.status_pub = rospy.Publisher('~status', String, queue_size=1)
+        
+        # --- 新增代码 ---
+        # 发布航点到达状态
+        self.waypoint_reached_pub = rospy.Publisher('~waypoint_reached', Bool, queue_size=1)
 
         # 主控制循环
         self.control_timer = rospy.Timer(rospy.Duration(1.0 / self.control_rate), self._control_loop)
-        rospy.loginfo(f"[{self.namespace}] 轨迹执行器已就绪。")
+        rospy.loginfo(f"{log_prefix} 轨迹执行器已就绪。")
 
     # --- 控制接口的回调函数 ---
     def _handle_goto_topic(self, msg):
@@ -216,6 +223,10 @@ class TrajectoryExecutorNode:
         self.hover_pose = self.current_pose
         self._set_and_publish_state(FlightState.HOVERING)
         self.trajectory_initialized = False
+        
+        # --- 修改/新增 ---
+        # 当进入悬停状态时，发布航点到达消息
+        self.waypoint_reached_pub.publish(True)
 
     def _distance(self, p1, p2):
         return math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2)
