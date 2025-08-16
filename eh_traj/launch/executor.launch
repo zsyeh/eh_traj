@@ -1,7 +1,7 @@
 <launch>
-    <arg name="namespace" default="iris_0"/>
+    <arg name="namespace" default=""/>
 
-    <node name="trajectory_executor" pkg="eh_traj" type="trajectory_executor.py" output="screen" respawn="true">
+    <node name="trajectory_executor_$(arg namespace)" pkg="eh_traj" type="trajectory_executor.py" output="screen" respawn="true">
         
         <param name="namespace" value="$(arg namespace)" />
 
