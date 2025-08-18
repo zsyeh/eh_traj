@@ -1,0 +1,16 @@
+<launch>
+    <arg name="executor_ns" default="iris_1" doc="Namespace for the slave UAV's executor."/>
+    <arg name="master_host" default="localhost" doc="IP address of the master machine. CHANGE THIS FOR REAL FLIGHT."/>
+    <arg name="master_port" default="9999" doc="Port of the master's TCP server."/>
+
+    <include file="$(find eh_traj)/launch/executor.launch">
+        <arg name="namespace" value="$(arg executor_ns)" />
+    </include>
+
+    <node name="tcp_slave_bridge" pkg="eh_traj" type="tcp_slave_bridge.py" output="screen">
+        <param name="executor_ns" value="$(arg executor_ns)" />
+        <param name="master_host" value="$(arg master_host)" />
+        <param name="master_port" value="$(arg master_port)" />
+    </node>
+
+</launch>
