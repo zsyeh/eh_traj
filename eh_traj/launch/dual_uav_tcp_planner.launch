@@ -1,0 +1,15 @@
+<launch>
+  <node
+    pkg="eh_traj"
+    type="dual_uav_tcp_planner.py"
+    name="dual_uav_tcp_planner"
+    output="screen"
+    args="_ns_self:=iris_0 _ns_slave:=iris_1 _bind_host:=0.0.0.0 _bind_port:=9999">
+
+    <rosparam command="load" file="$(find eh_traj)/config/waypoints.yaml"/>
+
+    <!-- 这里不写 ns，roslaunch 会把 YAML 作为该节点的私有参数加载
+         于是 YAML 顶层 key waypoints 会落到 /dual_uav_tcp_planner/waypoints -->
+  </node>
+</launch>
+

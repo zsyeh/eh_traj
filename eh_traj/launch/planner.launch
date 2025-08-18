@@ -1,5 +1,0 @@
-<launch>
-    <rosparam file="$(find eh_traj)/config/waypoints.yaml" command="load" ns="waypoint_planner" />
-
-    <node name="waypoint_planner" pkg="eh_traj" type="waypoint_planner.py" output="screen" />
-</launch>

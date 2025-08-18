@@ -1,16 +1,11 @@
 <launch>
-    <arg name="namespace" default=""/>
+    <arg name="namespace" default="iris_0"/>
 
-    <node name="trajectory_executor_$(arg namespace)" pkg="eh_traj" type="trajectory_executor.py" output="screen" respawn="true">
-        
+    <node name="trajectory_executor_$(arg namespace)" pkg="eh_traj" type="trajectory_executor.py" output="screen">
         <param name="namespace" value="$(arg namespace)" />
-
-        <rosparam>
-            takeoff_height: 1.5
-            max_velocity: 1.0
-            goal_tolerance: 0.2
-            control_rate: 20.0
-        </rosparam>
-
+        <param name="takeoff_height" value="1.5" />
+        <param name="max_velocity" value="1.0" />
+        <param name="goal_tolerance" value="0.4" />
+        <param name="control_rate" value="20.0" />
     </node>
 </launch>
