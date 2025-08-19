@@ -1,0 +1,15 @@
+<launch>
+    <node name="dual_uav_tcp_planner" pkg="eh_traj" type="dual_uav_tcp_planner.py" output="screen">
+        <param name="ns_self" value="iris_0" />
+        <param name="ns_slave" value="iris_1" />
+        <param name="bind_port" value="9999" />
+        <rosparam file="$(find eh_traj)/waypoints.yaml" />
+    </node>
+
+    <node name="tcp_slave_bridge" pkg="eh_traj" type="tcp_slave_bridge.py" output="screen">
+        <param name="master_host" value="localhost" /> 
+        <param name="master_port" value="9999" />
+        <param name="executor_ns" value="iris_1" />
+    </node>
+
+</launch>

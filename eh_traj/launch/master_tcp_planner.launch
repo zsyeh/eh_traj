@@ -1,0 +1,16 @@
+<launch>
+    <arg name="self_ns"  default="" doc="Namespace for the master UAV, controlled via ROS topics."/>
+    <arg name="waypoints_file" default="$(find eh_traj)/waypoints.yaml" doc="Path to the waypoints configuration file."/>
+
+    <include file="$(find eh_traj)/launch/executor.launch">
+        <arg name="namespace" value="$(arg self_ns)" />
+    </include>
+
+    <node name="dual_uav_tcp_planner" pkg="eh_traj" type="dual_uav_tcp_planner.py" output="screen">
+        <param name="self_ns"  value="$(arg self_ns)" />
+        <param name="slave_ns" value="$(arg slave_ns)" />
+        
+        <rosparam command="load" file="$(arg waypoints_file)" />
+    </node>
+
+</launch>
