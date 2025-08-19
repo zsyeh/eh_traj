@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 # by wxc (Refactored for clarity and flexibility)
 """
-Dual UAV TCP Planner (Master) v2.1
+Dual UAV TCP Planner (Master) v2.2 (Error Fix)
 - Opens a TCP server for the slave bridge.
 - Commands local executor (via ROS topics) and remote slave (via TCP).
 - Waypoints are now loaded using hardcoded keys 'master' and 'slave' from the YAML file,
   decoupling waypoint logic from ROS namespaces entirely.
+- Fixed AttributeError: 'port' vs 'bind_port'.
 """
 
 import rospy
@@ -46,12 +47,8 @@ class DualUAVTCPPlanner:
         rospy.init_node("dual_uav_tcp_planner")
 
         # --- Parameters ---
-        # self_ns is now ONLY used to build topic names for the local executor.
         self.ns_self = rospy.get_param("~self_ns", "")
-        
-        # slave_ns is no longer used by this node, but we read it to avoid breaking launch files
-        # that might still be passing it.
-        rospy.get_param("~slave_ns", "")
+        rospy.get_param("~slave_ns", "iris_1")
         
         self.bind_host = rospy.get_param("~bind_host", "0.0.0.0")
         self.bind_port = int(rospy.get_param("~bind_port", 9999))
@@ -63,9 +60,7 @@ class DualUAVTCPPlanner:
         self.traj_a, self.traj_b = [], []
         waypoints_ok = False
         try:
-            # The entire YAML file is loaded under the private namespace of this node.
             wp_dict = rospy.get_param("~waypoints", {})
-            # **MODIFIED HERE: Using hardcoded keys "master" and "slave"**
             self.traj_a = wp_dict.get("master", [])
             self.traj_b = wp_dict.get("slave", [])
             
@@ -84,6 +79,7 @@ class DualUAVTCPPlanner:
         self.num_wp = min(len(self.traj_a), len(self.traj_b))
 
         # --- Local executor interfaces (topic construction is the ONLY place ns_self is used) ---
+        # If ns_self is empty, prefix becomes /trajectory_executor_
         self.exec_prefix_self = f"/trajectory_executor_{self.ns_self}"
         self.self_takeoff_cli = rospy.ServiceProxy(f"{self.exec_prefix_self}/takeoff", Trigger)
         self.self_land_cli    = rospy.ServiceProxy(f"{self.exec_prefix_self}/land",    Trigger)
@@ -128,7 +124,8 @@ class DualUAVTCPPlanner:
         s.bind((self.bind_host, self.bind_port))
         s.listen(1)
         self.server_sock = s
-        rospy.loginfo(f"[MASTER] TCP server listening on {self.bind_host}:{self.port}")
+        # **FIXED HERE**
+        rospy.loginfo(f"[MASTER] TCP server listening on {self.bind_host}:{self.bind_port}")
 
         while not rospy.is_shutdown():
             try:
@@ -162,7 +159,7 @@ class DualUAVTCPPlanner:
                 msg = recv_frame(conn)
                 t = msg.get("type")
                 if t == "HEARTBEAT":
-                    pass # Heartbeats are mainly for RX timeout on the slave side
+                    pass
                 elif t == "STATUS":
                     with self.slave_state_lock:
                         self.slave_state = msg.get("payload", {}).get("state", "UNKNOWN")
@@ -201,14 +198,12 @@ class DualUAVTCPPlanner:
 
         rospy.loginfo(f"[MASTER] Mission started with {self.num_wp} waypoints.")
         
-        # Abort helper
         def abort_mission(reason):
             rospy.logerr(f"[MASTER] MISSION ABORTED: {reason}")
             try: self.self_land_cli(TriggerRequest())
             except: pass
             self._send({"type": "LAND"})
 
-        # --- Takeoff Phase ---
         rospy.loginfo("[MASTER] Commanding both UAVs to take off.")
         try:
             resp = self.self_takeoff_cli(TriggerRequest())
@@ -219,7 +214,6 @@ class DualUAVTCPPlanner:
         
         self._send({"type": "TAKEOFF"})
 
-        # --- Wait for Stabilization ---
         self.self_wp_reached_event.clear()
         rospy.loginfo("[MASTER] Waiting for SELF to stabilize...")
         if not self.self_wp_reached_event.wait(timeout=20.0):
@@ -243,7 +237,6 @@ class DualUAVTCPPlanner:
         rospy.loginfo("[MASTER] Both UAVs are stable. Starting mission waypoints.")
         time.sleep(1.0) 
 
-        # --- Waypoint Iteration ---
         for i in range(self.num_wp):
             if rospy.is_shutdown(): break
             a, b = self.traj_a[i], self.traj_b[i]
@@ -252,7 +245,6 @@ class DualUAVTCPPlanner:
             self.self_wp_reached_event.clear()
             self.slave_wp_reached_event.clear()
 
-            # Command self
             pose_a = PoseStamped()
             pose_a.header.stamp = rospy.Time.now()
             pose_a.header.frame_id = self.frame_id
@@ -260,10 +252,8 @@ class DualUAVTCPPlanner:
             pose_a.pose.orientation.w = 1.0
             self.self_goto_pub.publish(pose_a)
 
-            # Command slave
             self._send({"type": "GOTO", "payload": {"x": b[0], "y": b[1], "z": b[2]}})
 
-            # Wait for both
             rospy.loginfo(f"[MASTER] Waiting for both to reach waypoint {i+1}...")
             self_reached = self.self_wp_reached_event.wait(timeout=60.0)
             slave_reached = self.slave_wp_reached_event.wait(timeout=60.0)
@@ -277,7 +267,6 @@ class DualUAVTCPPlanner:
             
             rospy.loginfo(f"[MASTER] Both UAVs reached waypoint {i+1}.")
         
-        # --- Landing Phase ---
         rospy.loginfo("[MASTER] Mission sequence finished. Commanding LAND.")
         try: self.self_land_cli(TriggerRequest())
         except: pass

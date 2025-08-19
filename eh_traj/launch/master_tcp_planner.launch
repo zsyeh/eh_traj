@@ -8,8 +8,7 @@
 
     <node name="dual_uav_tcp_planner" pkg="eh_traj" type="dual_uav_tcp_planner.py" output="screen">
         <param name="self_ns"  value="$(arg self_ns)" />
-        <param name="slave_ns" value="$(arg slave_ns)" />
-        
+
         <rosparam command="load" file="$(arg waypoints_file)" />
     </node>
 
