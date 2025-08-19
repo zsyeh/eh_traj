@@ -47,7 +47,7 @@ class TCPSlaveBridge:
         # --- Parameters ---
         self.master_host = rospy.get_param("~master_host", "localhost")
         self.master_port = int(rospy.get_param("~master_port", 9999))
-        self.executor_ns = rospy.get_param("~executor_ns", "iris_1")
+        self.executor_ns = rospy.get_param("~executor_ns", "")
         self.hb_interval = float(rospy.get_param("~hb_interval", 0.5))
         self.hb_timeout = float(rospy.get_param("~hb_timeout", 5.0))
         self.frame_id = rospy.get_param("~target_frame_id", "map")

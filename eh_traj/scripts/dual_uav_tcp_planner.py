@@ -2,13 +2,11 @@
 # -*- coding: utf-8 -*-
 # by wxc (Refactored for clarity and flexibility)
 """
-Dual UAV TCP Planner (Master) v2.0
+Dual UAV TCP Planner (Master) v2.1
 - Opens a TCP server for the slave bridge.
 - Commands local executor (via ROS topics) and remote slave (via TCP).
-- Namespaces and waypoint files are now passed as ROS params for better decoupling.
-- This node is agnostic of the slave's actual namespace (e.g., 'iris_1'). It only
-  knows its own namespace ('self_ns') and a logical slave name ('slave_ns')
-  used for fetching waypoints.
+- Waypoints are now loaded using hardcoded keys 'master' and 'slave' from the YAML file,
+  decoupling waypoint logic from ROS namespaces entirely.
 """
 
 import rospy
@@ -47,11 +45,13 @@ class DualUAVTCPPlanner:
     def __init__(self):
         rospy.init_node("dual_uav_tcp_planner")
 
-        # --- Parameters are now cleaner, passed from launch file ---
-        # Note: self_ns is used to build topic names for the local executor.
-        # slave_ns is ONLY used as a key to look up waypoints in the YAML file.
-        self.ns_self = rospy.get_param("~self_ns", "iris_0")
-        self.ns_slave = rospy.get_param("~slave_ns", "iris_1")
+        # --- Parameters ---
+        # self_ns is now ONLY used to build topic names for the local executor.
+        self.ns_self = rospy.get_param("~self_ns", "")
+        
+        # slave_ns is no longer used by this node, but we read it to avoid breaking launch files
+        # that might still be passing it.
+        rospy.get_param("~slave_ns", "")
         
         self.bind_host = rospy.get_param("~bind_host", "0.0.0.0")
         self.bind_port = int(rospy.get_param("~bind_port", 9999))
@@ -59,23 +59,25 @@ class DualUAVTCPPlanner:
         self.wait_slave_timeout = float(rospy.get_param("~wait_slave_timeout", 10.0))
         self.frame_id = rospy.get_param("~target_frame_id", "map")
 
-        # --- Waypoints (loaded via rosparam in launch file) ---
+        # --- Waypoints (loaded via rosparam with hardcoded keys) ---
         self.traj_a, self.traj_b = [], []
         waypoints_ok = False
         try:
             # The entire YAML file is loaded under the private namespace of this node.
             wp_dict = rospy.get_param("~waypoints", {})
-            self.traj_a = wp_dict.get(self.ns_self, [])
-            self.traj_b = wp_dict.get(self.ns_slave, [])
+            # **MODIFIED HERE: Using hardcoded keys "master" and "slave"**
+            self.traj_a = wp_dict.get("master", [])
+            self.traj_b = wp_dict.get("slave", [])
+            
             if self.traj_a and self.traj_b:
                 waypoints_ok = True
-                rospy.loginfo("[MASTER] Loaded %d and %d waypoints for %s / %s.",
-                              len(self.traj_a), len(self.traj_b), self.ns_self, self.ns_slave)
+                rospy.loginfo("[MASTER] Loaded %d and %d waypoints for 'master' and 'slave'.",
+                              len(self.traj_a), len(self.traj_b))
         except Exception as e:
             rospy.logerr(f"[MASTER] Failed to load waypoints: {e}")
 
         if not waypoints_ok:
-            rospy.logwarn("[MASTER] No valid waypoints found. Ensure YAML is loaded correctly into private param '~waypoints'.")
+            rospy.logwarn("[MASTER] No valid waypoints found. Ensure YAML is loaded and contains 'master'/'slave' keys.")
         if waypoints_ok and len(self.traj_a) != len(self.traj_b):
             rospy.logwarn("[MASTER] Waypoint length mismatch; will use the shorter length.")
 
@@ -112,7 +114,7 @@ class DualUAVTCPPlanner:
         self.hb_thread.start()
 
         rospy.loginfo(f"[MASTER] Dual UAV TCP Planner ready at {self.bind_host}:{self.bind_port}")
-        rospy.loginfo(f"[MASTER] Controlling local UAV '{self.ns_self}' and waiting for slave '{self.ns_slave}'.")
+        rospy.loginfo(f"[MASTER] Controlling local UAV via topics with prefix '{self.exec_prefix_self}'.")
 
 
     def _self_status_cb(self, msg: String):
@@ -126,7 +128,7 @@ class DualUAVTCPPlanner:
         s.bind((self.bind_host, self.bind_port))
         s.listen(1)
         self.server_sock = s
-        rospy.loginfo(f"[MASTER] TCP server listening on {self.bind_host}:{self.bind_port}")
+        rospy.loginfo(f"[MASTER] TCP server listening on {self.bind_host}:{self.port}")
 
         while not rospy.is_shutdown():
             try:

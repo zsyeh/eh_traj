@@ -1,5 +1,5 @@
 <launch>
-    <arg name="executor_ns" default="iris_1" doc="Namespace for the slave UAV's executor."/>
+    <arg name="executor_ns" default="" doc="Namespace for the slave UAV's executor."/>
     <arg name="master_host" default="localhost" doc="IP address of the master machine. CHANGE THIS FOR REAL FLIGHT."/>
     <arg name="master_port" default="9999" doc="Port of the master's TCP server."/>
 

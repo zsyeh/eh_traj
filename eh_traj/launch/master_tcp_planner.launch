@@ -1,6 +1,5 @@
 <launch>
-    <arg name="self_ns"  default="iris_0" doc="Namespace for the master UAV, controlled via ROS topics."/>
-    <arg name="slave_ns" default="iris_1" doc="Logical namespace for the slave UAV, used ONLY for fetching waypoints."/>
+    <arg name="self_ns"  default="" doc="Namespace for the master UAV, controlled via ROS topics."/>
     <arg name="waypoints_file" default="$(find eh_traj)/waypoints.yaml" doc="Path to the waypoints configuration file."/>
 
     <include file="$(find eh_traj)/launch/executor.launch">
