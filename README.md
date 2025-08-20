@@ -1,8 +1,8 @@
 仿真
 ```
-roslaunch eh_traj master_tcp_planner.launch executor_ns:=iris_0 self_ns:=iris_0
+roslaunch eh_traj master_tcp_planner.launch ns:=iris_0
  
-roslaunch eh_traj slave_tcp_planner.launch executor_ns:=iris_1 self_ns:=iris_1  
+roslaunch eh_traj slave_tcp_planner.launch ns:=iris_1  
 
 rosservice call /dual_uav_tcp_planner/start_full_mission "{}"
 
