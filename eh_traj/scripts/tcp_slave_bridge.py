@@ -5,7 +5,7 @@
 TCP Slave Bridge v2.0
 - Connects to master's TCP server and translates commands for a local executor.
 - Forwards local executor status back to the master.
-- master_host and executor_ns are now passed as ROS params.
+- master_host and ns are now passed as ROS params.
 """
 
 import rospy
@@ -47,19 +47,19 @@ class TCPSlaveBridge:
         # --- Parameters ---
         self.master_host = rospy.get_param("~master_host", "localhost")
         self.master_port = int(rospy.get_param("~master_port", 9999))
-        self.executor_ns = rospy.get_param("~executor_ns", "")
+        self.ns = rospy.get_param("~ns", "")
         self.hb_interval = float(rospy.get_param("~hb_interval", 0.5))
         self.hb_timeout = float(rospy.get_param("~hb_timeout", 5.0))
         self.frame_id = rospy.get_param("~target_frame_id", "map")
 
-        # --- Local executor interfaces (the ONLY place executor_ns is used) ---
-        self.prefix = f"/trajectory_executor_{self.executor_ns}"
+        # --- Local executor interfaces (the ONLY place ns is used) ---
+        self.prefix = f"/trajectory_executor_{self.ns}"
         rospy.loginfo(f"[SLAVE] Waiting for executor services at '{self.prefix}'...")
         try:
             rospy.wait_for_service(f"{self.prefix}/takeoff", timeout=15.0)
             rospy.wait_for_service(f"{self.prefix}/land", timeout=15.0)
         except rospy.ROSException:
-            rospy.logerr(f"[SLAVE] Executor services not found. Is 'trajectory_executor_{self.executor_ns}' running?")
+            rospy.logerr(f"[SLAVE] Executor services not found. Is 'trajectory_executor_{self.ns}' running?")
             rospy.signal_shutdown("Executor services not found")
             return
 
@@ -80,7 +80,7 @@ class TCPSlaveBridge:
         self.watchdog_timer = rospy.Timer(rospy.Duration(1.0), self._watchdog)
 
         rospy.loginfo(f"[SLAVE] TCP Slave Bridge started. Will connect to {self.master_host}:{self.master_port}.")
-        rospy.loginfo(f"[SLAVE] Bridging to executor with namespace '{self.executor_ns}'.")
+        rospy.loginfo(f"[SLAVE] Bridging to executor with namespace '{self.ns}'.")
 
     def _status_cb(self, msg: String):
         # Forward status to master

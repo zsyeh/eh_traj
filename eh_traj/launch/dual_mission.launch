@@ -9,7 +9,7 @@
     <node name="tcp_slave_bridge" pkg="eh_traj" type="tcp_slave_bridge.py" output="screen">
         <param name="master_host" value="localhost" /> 
         <param name="master_port" value="9999" />
-        <param name="executor_ns" value="iris_1" />
+        <param name="ns" value="iris_1" />
     </node>
 
 </launch>
