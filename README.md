@@ -6,6 +6,9 @@ roslaunch eh_traj slave_tcp_planner.launch ns:=iris_1
 
 rosservice call /dual_uav_tcp_planner/start_full_mission "{}"
 
+rosrun rosserial_python serial_node.py /dev/ttyUSB0
+
+
 ```
 
 
