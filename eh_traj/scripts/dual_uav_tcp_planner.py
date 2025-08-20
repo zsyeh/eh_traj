@@ -47,8 +47,7 @@ class DualUAVTCPPlanner:
         rospy.init_node("dual_uav_tcp_planner")
 
         # --- Parameters ---
-        self.ns_self = rospy.get_param("~self_ns", "")
-        rospy.get_param("~slave_ns", "iris_1")
+        self.ns_self = rospy.get_param("~ns", "")
         
         self.bind_host = rospy.get_param("~bind_host", "0.0.0.0")
         self.bind_port = int(rospy.get_param("~bind_port", 9999))
